@@ -1,34 +1,167 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
-}
+/* Optimus Echo Predictor Custom Styles */
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
-}
-
-.App-header {
-    background-color: #0f0f10;
+/* Remove default margins and use custom theme */
+.App {
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+    background-color: #050505;
 }
 
-.App-link {
-    color: #61dafb;
+/* Three.js canvas styles */
+.robot-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
 }
 
-@keyframes App-logo-spin {
+/* Drag and drop styles */
+.drag-item {
+    cursor: grab;
+    user-select: none;
+}
+
+.drag-item:active {
+    cursor: grabbing;
+}
+
+.drop-zone {
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.drop-zone.drag-over {
+    background-color: rgba(0, 240, 255, 0.1);
+    border-color: #00F0FF;
+}
+
+/* Chart container animations */
+.chart-container {
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
+        transform: translateY(10px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Risk level indicators */
+.risk-low {
+    color: #00FF9D;
+    border-color: #00FF9D;
+}
+
+.risk-medium {
+    color: #FFB800;
+    border-color: #FFB800;
+}
+
+.risk-high {
+    color: #FF4D00;
+    border-color: #FF4D00;
+}
+
+.risk-critical {
+    color: #FF0000;
+    border-color: #FF0000;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* Navigation active state */
+.nav-item.active {
+    background-color: rgba(0, 240, 255, 0.1);
+    border-left: 2px solid #00F0FF;
+}
+
+/* Loading spinner */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #1F2937;
+    border-top-color: #00F0FF;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Tooltip styles */
+.custom-tooltip {
+    background: #0A0A0F !important;
+    border: 1px solid #00F0FF !important;
+    padding: 12px !important;
+    font-family: 'Roboto Mono', monospace !important;
+    font-size: 12px !important;
+}
+
+/* Progress bar animations */
+.progress-bar {
+    transition: width 0.5s ease-out;
+}
+
+/* Alert animations */
+.alert-enter {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+.alert-enter-active {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.alert-exit {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.alert-exit-active {
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+/* 3D scene glow effect */
+.scene-glow {
+    filter: drop-shadow(0 0 30px rgba(0, 240, 255, 0.3));
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+}
+
+/* VR Toggle placeholder styling */
+.vr-toggle-placeholder {
+    position: relative;
+    overflow: hidden;
+}
+
+.vr-toggle-placeholder::after {
+    content: 'COMING SOON';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-10deg);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #4A5568;
+    white-space: nowrap;
 }
