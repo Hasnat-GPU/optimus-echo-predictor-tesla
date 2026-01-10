@@ -352,6 +352,50 @@ export default function Predictions() {
                           </div>
                         </div>
 
+                        {/* ESN Details */}
+                        {prediction.esn_details && (
+                          <div className="mt-6 pt-4 border-t border-optimus-border">
+                            <h4 className="text-xs text-optimus-cyan uppercase tracking-wider mb-3 flex items-center gap-2">
+                              <Radio className="h-3 w-3" />
+                              ReservoirPy ESN Analysis
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                              <div className="p-2 bg-optimus-subtle border border-optimus-border">
+                                <p className="text-optimus-steel uppercase">Reservoir Activation</p>
+                                <p className="text-optimus-cyan font-mono text-lg">
+                                  {(prediction.esn_details.reservoir_activation * 100).toFixed(1)}%
+                                </p>
+                              </div>
+                              <div className="p-2 bg-optimus-subtle border border-optimus-border">
+                                <p className="text-optimus-steel uppercase">State Variance</p>
+                                <p className="text-optimus-silver font-mono text-lg">
+                                  {prediction.esn_details.state_variance.toFixed(4)}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-optimus-subtle border border-optimus-border">
+                                <p className="text-optimus-steel uppercase">Gestures Analyzed</p>
+                                <p className="text-optimus-silver font-mono text-lg">
+                                  {prediction.esn_details.gestures_analyzed}
+                                </p>
+                              </div>
+                              <div className="p-2 bg-optimus-subtle border border-optimus-border">
+                                <p className="text-optimus-steel uppercase">Anomalies Detected</p>
+                                <p className={cn(
+                                  "font-mono text-lg",
+                                  prediction.esn_details.anomalies_detected > 0 
+                                    ? "text-optimus-orange" 
+                                    : "text-optimus-green"
+                                )}>
+                                  {prediction.esn_details.anomalies_detected}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-optimus-steel mt-2 font-mono">
+                              Model: {prediction.esn_details.model_type}
+                            </p>
+                          </div>
+                        )}
+
                         {/* Scenario Details */}
                         {scenario && (
                           <div className="mt-6 pt-4 border-t border-optimus-border">
