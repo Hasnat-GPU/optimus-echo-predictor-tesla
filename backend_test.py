@@ -348,6 +348,7 @@ class OptimusEchoAPITester:
             self.test_gesture_endpoints()
             self.test_chart_endpoints()
             self.test_alerts_endpoints()
+            self.test_esn_specific_endpoints()
             
         finally:
             self.cleanup_test_data()
