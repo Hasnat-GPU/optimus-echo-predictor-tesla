@@ -76,12 +76,19 @@ export default function Layout() {
                     "flex items-center gap-3 px-4 py-3 text-xs font-medium tracking-wider transition-colors",
                     isActive
                       ? "bg-optimus-cyan/10 text-optimus-cyan border-l-2 border-optimus-cyan"
-                      : "text-optimus-steel hover:text-optimus-silver hover:bg-optimus-subtle"
+                      : item.highlight
+                        ? "text-optimus-green hover:text-optimus-cyan hover:bg-optimus-subtle border-l-2 border-transparent"
+                        : "text-optimus-steel hover:text-optimus-silver hover:bg-optimus-subtle"
                   )}
                   data-testid={`nav-${item.name.toLowerCase().replace(' ', '-')}`}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className={cn("h-4 w-4", item.highlight && !isActive && "text-optimus-green")} />
                   <span className="uppercase">{item.name}</span>
+                  {item.highlight && !isActive && (
+                    <span className="ml-auto text-[8px] px-1 py-0.5 bg-optimus-green/20 text-optimus-green border border-optimus-green/30">
+                      NEW
+                    </span>
+                  )}
                   {isActive && <ChevronRight className="h-3 w-3 ml-auto" />}
                 </NavLink>
               );
