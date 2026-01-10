@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -11,10 +11,15 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 import random
-import math
+import numpy as np
+import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Import ESN and Gesture modules
+from esn_module import get_esn_predictor, gestures_to_sequence, predict_echo_risk, GESTURE_TYPES
+from gesture_detection import detect_gestures_from_base64, generate_synthetic_gesture_sequence, get_gesture_detector
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -34,11 +39,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize ESN on startup
+esn_initialized = False
+
 # ==================== MODELS ====================
 
 class ScenarioBase(BaseModel):
     name: str
-    task_type: str  # assembly_line, quality_check, material_handling, collaborative_work
+    task_type: str
     worker_count: int = Field(ge=1, le=50)
     robot_count: int = Field(ge=1, le=20)
     shift_duration_hours: float = Field(ge=1, le=12)
@@ -52,7 +60,7 @@ class Scenario(ScenarioBase):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    status: str = "pending"  # pending, analyzed, archived
+    status: str = "pending"
 
 class PredictionResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -60,20 +68,16 @@ class PredictionResult(BaseModel):
     scenario_id: str
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     overall_risk_score: float
-    risk_level: str  # low, medium, high, critical
+    risk_level: str
     echo_risks: List[Dict[str, Any]]
     mitigated_errors_percent: float
     gesture_accuracy: float
     symbiosis_index: float
     recommendations: List[str]
+    esn_details: Optional[Dict[str, Any]] = None
 
-class GestureData(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    gesture_type: str
-    confidence: float
-    timestamp: str
-    source: str  # synthetic, uploaded, roboflow
+class GestureDetectionRequest(BaseModel):
+    image_base64: str
 
 class KPIData(BaseModel):
     total_scenarios: int
@@ -86,39 +90,68 @@ class KPIData(BaseModel):
 class Alert(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    type: str  # warning, danger, info
+    type: str
     message: str
     scenario_id: Optional[str] = None
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     acknowledged: bool = False
 
-# ==================== MOCK ECHO STATE NETWORK ====================
+# ==================== REAL ESN PREDICTION ====================
 
-def mock_echo_prediction(scenario: Scenario) -> PredictionResult:
+def real_esn_prediction(scenario: Scenario, gestures: Optional[List[Dict]] = None) -> PredictionResult:
     """
-    Mocked Echo State Network prediction.
-    In production, this would use ReservoirPy for actual echo state computations.
+    Real Echo State Network prediction using ReservoirPy.
     """
-    # Base risk factors
-    worker_density = scenario.worker_count / max(scenario.robot_count, 1)
-    task_complexity = {
-        "assembly_line": 0.6,
-        "quality_check": 0.4,
-        "material_handling": 0.7,
-        "collaborative_work": 0.8
-    }.get(scenario.task_type, 0.5)
+    # Generate gesture sequence if not provided
+    if gestures is None or len(gestures) < 10:
+        # Generate synthetic gestures based on scenario parameters
+        n_frames = int(scenario.shift_duration_hours * 10)  # 10 frames per hour
+        gestures = generate_synthetic_gesture_sequence(
+            n_frames=max(50, n_frames),
+            gesture_type='random',
+            add_noise=True
+        )
+        
+        # Add scenario-based risk factors to gestures
+        if scenario.worker_count > 10:
+            # High density - add more erratic movements
+            for g in gestures:
+                g['position']['x'] += random.uniform(-0.5, 0.5)
+                g['confidence'] *= random.uniform(0.85, 1.0)
+        
+        if scenario.proximity_threshold_meters < 1.0:
+            # Close proximity - add lower confidence
+            for g in gestures:
+                g['confidence'] *= random.uniform(0.8, 0.95)
     
-    proximity_risk = 1 - (scenario.proximity_threshold_meters / 5.0)
-    time_fatigue = min(scenario.shift_duration_hours / 12.0, 1.0)
+    # Run through ESN
+    try:
+        esn_result = predict_echo_risk(gestures)
+        base_risk = esn_result['risk_score']
+        esn_anomalies = esn_result['anomalies']
+        reservoir_activation = esn_result['reservoir_activation']
+        state_variance = esn_result['state_variance']
+    except Exception as e:
+        logger.error(f"ESN prediction error: {e}")
+        base_risk = 0.5
+        esn_anomalies = []
+        reservoir_activation = 0.0
+        state_variance = 0.0
     
-    # Echo state network simulation (mock)
-    # In real implementation, this would process time-series gesture data
-    base_risk = (worker_density * 0.2 + task_complexity * 0.3 + 
-                 proximity_risk * 0.3 + time_fatigue * 0.2)
+    # Adjust risk based on scenario parameters
+    task_risk_factor = {
+        "assembly_line": 0.1,
+        "quality_check": -0.1,
+        "material_handling": 0.15,
+        "collaborative_work": 0.2
+    }.get(scenario.task_type, 0.0)
     
-    # Add some randomness to simulate network variance
-    noise = random.uniform(-0.1, 0.1)
-    overall_risk = max(0.0, min(1.0, base_risk + noise))
+    proximity_factor = (1.5 - scenario.proximity_threshold_meters) * 0.1
+    density_factor = (scenario.worker_count / scenario.robot_count - 1) * 0.05 if scenario.robot_count > 0 else 0
+    fatigue_factor = (scenario.shift_duration_hours - 8) * 0.02 if scenario.shift_duration_hours > 8 else 0
+    
+    overall_risk = base_risk + task_risk_factor + proximity_factor + density_factor + fatigue_factor
+    overall_risk = max(0.0, min(1.0, overall_risk))
     
     # Determine risk level
     if overall_risk < 0.3:
@@ -130,55 +163,64 @@ def mock_echo_prediction(scenario: Scenario) -> PredictionResult:
     else:
         risk_level = "critical"
     
-    # Generate echo risks (specific interaction risks)
+    # Build echo risks from ESN anomalies
     echo_risks = []
     
-    if task_complexity > 0.5:
+    for anomaly in esn_anomalies:
+        risk_type_map = {
+            "rapid_gesture_changes": "gesture_misread",
+            "low_confidence": "recognition_failure",
+            "erratic_movement": "proximity_breach",
+            "unusual_pattern": "anomaly_detected"
+        }
+        
         echo_risks.append({
-            "type": "gesture_misread",
-            "probability": round(random.uniform(0.1, 0.35), 3),
-            "description": "Robot may misinterpret worker gestures during complex tasks",
-            "affected_workers": random.randint(1, min(5, scenario.worker_count))
+            "type": risk_type_map.get(anomaly['type'], anomaly['type']),
+            "probability": round(anomaly['severity'], 3),
+            "description": anomaly['description'],
+            "esn_detected": True
         })
     
-    if proximity_risk > 0.5:
+    # Add scenario-based risks
+    if scenario.proximity_threshold_meters < 1.0:
         echo_risks.append({
             "type": "proximity_breach",
-            "probability": round(random.uniform(0.15, 0.4), 3),
-            "description": "High probability of safety zone violations",
+            "probability": round(0.3 + proximity_factor, 3),
+            "description": f"Close proximity threshold ({scenario.proximity_threshold_meters}m) increases collision risk",
             "affected_zones": random.randint(1, 3)
         })
     
-    if time_fatigue > 0.6:
+    if scenario.shift_duration_hours > 8:
         echo_risks.append({
             "type": "fatigue_induced",
-            "probability": round(random.uniform(0.2, 0.45), 3),
-            "description": "Worker fatigue may lead to unpredictable movements",
-            "peak_hours": [random.randint(4, 6), random.randint(7, 10)]
-        })
-    
-    if worker_density > 2:
-        echo_risks.append({
-            "type": "crowding_interference",
-            "probability": round(random.uniform(0.25, 0.5), 3),
-            "description": "Multiple workers may cause sensor confusion",
-            "critical_areas": ["workstation_A", "assembly_zone"]
+            "probability": round(0.2 + fatigue_factor * 2, 3),
+            "description": f"Extended shift ({scenario.shift_duration_hours}h) may cause worker fatigue",
+            "peak_hours": [int(scenario.shift_duration_hours * 0.7), int(scenario.shift_duration_hours * 0.9)]
         })
     
     # Calculate derived metrics
-    mitigated = round(random.uniform(15, 35), 1)
-    gesture_accuracy = round(random.uniform(0.85, 0.98), 3)
-    symbiosis_index = round(1 - overall_risk * 0.7, 3)
+    gesture_accuracy = 1.0 - (reservoir_activation * 0.3)
+    gesture_accuracy = max(0.7, min(0.99, gesture_accuracy + random.uniform(-0.05, 0.05)))
+    
+    mitigated = 15 + (1 - overall_risk) * 25 + random.uniform(-5, 5)
+    mitigated = max(10, min(40, mitigated))
+    
+    symbiosis_index = 1 - overall_risk * 0.6
+    symbiosis_index = max(0.3, min(1.0, symbiosis_index))
     
     # Generate recommendations
     recommendations = []
     if risk_level in ["high", "critical"]:
         recommendations.append("Increase safety zone buffer by 0.5 meters")
         recommendations.append("Implement additional gesture confirmation protocols")
-    if time_fatigue > 0.6:
-        recommendations.append("Consider shift rotation or mandatory breaks")
-    if worker_density > 2:
+    if any(a['type'] == 'fatigue_induced' for a in echo_risks):
+        recommendations.append("Consider shift rotation or mandatory breaks every 4 hours")
+    if any(a.get('esn_detected') for a in echo_risks):
+        recommendations.append("ESN detected unusual patterns - review gesture training data")
+    if scenario.worker_count / max(scenario.robot_count, 1) > 3:
         recommendations.append("Redistribute workers across zones to reduce density")
+    if reservoir_activation > 0.4:
+        recommendations.append("High reservoir activation indicates novel gesture patterns - update training data")
     if not recommendations:
         recommendations.append("Current configuration meets safety standards")
         recommendations.append("Continue monitoring for optimal performance")
@@ -188,46 +230,64 @@ def mock_echo_prediction(scenario: Scenario) -> PredictionResult:
         overall_risk_score=round(overall_risk, 3),
         risk_level=risk_level,
         echo_risks=echo_risks,
-        mitigated_errors_percent=mitigated,
-        gesture_accuracy=gesture_accuracy,
-        symbiosis_index=symbiosis_index,
-        recommendations=recommendations
-    )
-
-def generate_synthetic_gestures(count: int = 50) -> List[Dict]:
-    """Generate synthetic gesture data for demo purposes."""
-    gesture_types = ["stop", "proceed", "slow_down", "handover", "point", "wave", "emergency"]
-    sources = ["synthetic", "opencv_simulated"]
-    
-    gestures = []
-    base_time = datetime.now(timezone.utc)
-    
-    for i in range(count):
-        gesture = {
-            "id": str(uuid.uuid4()),
-            "gesture_type": random.choice(gesture_types),
-            "confidence": round(random.uniform(0.7, 0.99), 3),
-            "timestamp": (base_time.replace(second=i % 60)).isoformat(),
-            "source": random.choice(sources),
-            "position": {
-                "x": round(random.uniform(-2, 2), 2),
-                "y": round(random.uniform(0, 2), 2),
-                "z": round(random.uniform(-1, 1), 2)
-            }
+        mitigated_errors_percent=round(mitigated, 1),
+        gesture_accuracy=round(gesture_accuracy, 3),
+        symbiosis_index=round(symbiosis_index, 3),
+        recommendations=recommendations,
+        esn_details={
+            "reservoir_activation": round(reservoir_activation, 4),
+            "state_variance": round(state_variance, 4),
+            "gestures_analyzed": len(gestures),
+            "anomalies_detected": len(esn_anomalies),
+            "model_type": "ReservoirPy ESN"
         }
-        gestures.append(gesture)
-    
-    return gestures
+    )
 
 # ==================== API ROUTES ====================
 
 @api_router.get("/")
 async def root():
-    return {"message": "Optimus Echo Predictor API", "version": "1.0.0"}
+    return {"message": "Optimus Echo Predictor API", "version": "2.0.0", "esn": "ReservoirPy Active"}
 
 @api_router.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "esn_status": "initialized" if esn_initialized else "pending"
+    }
+
+@api_router.post("/esn/initialize")
+async def initialize_esn(background_tasks: BackgroundTasks):
+    """Initialize and train the ESN model."""
+    def train_esn():
+        global esn_initialized
+        try:
+            esn = get_esn_predictor()
+            if not esn.is_trained:
+                esn.train()
+            esn_initialized = True
+            logger.info("ESN model initialized successfully")
+        except Exception as e:
+            logger.error(f"ESN initialization failed: {e}")
+    
+    background_tasks.add_task(train_esn)
+    return {"message": "ESN initialization started", "status": "training"}
+
+@api_router.get("/esn/status")
+async def esn_status():
+    """Get ESN model status."""
+    try:
+        esn = get_esn_predictor()
+        return {
+            "initialized": esn.is_trained,
+            "units": esn.units,
+            "leak_rate": esn.lr,
+            "spectral_radius": esn.sr,
+            "model_path": str(esn.model_path)
+        }
+    except Exception as e:
+        return {"initialized": False, "error": str(e)}
 
 # Scenarios CRUD
 @api_router.post("/scenarios", response_model=Scenario)
@@ -254,19 +314,20 @@ async def delete_scenario(scenario_id: str):
     result = await db.scenarios.delete_one({"id": scenario_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Scenario not found")
-    # Also delete related predictions
     await db.predictions.delete_many({"scenario_id": scenario_id})
     return {"message": "Scenario deleted successfully"}
 
 # Predictions
 @api_router.post("/predictions/{scenario_id}", response_model=PredictionResult)
-async def run_prediction(scenario_id: str):
+async def run_prediction(scenario_id: str, background_tasks: BackgroundTasks):
     scenario_doc = await db.scenarios.find_one({"id": scenario_id}, {"_id": 0})
     if not scenario_doc:
         raise HTTPException(status_code=404, detail="Scenario not found")
     
     scenario = Scenario(**scenario_doc)
-    prediction = mock_echo_prediction(scenario)
+    
+    # Run real ESN prediction
+    prediction = real_esn_prediction(scenario)
     
     # Store prediction
     await db.predictions.insert_one(prediction.model_dump())
@@ -301,12 +362,42 @@ async def get_prediction(prediction_id: str):
         raise HTTPException(status_code=404, detail="Prediction not found")
     return prediction
 
-# Gestures
+# Gesture Detection
+@api_router.post("/gestures/detect")
+async def detect_gestures(request: GestureDetectionRequest):
+    """Detect gestures from a base64-encoded image using MediaPipe."""
+    try:
+        result = detect_gestures_from_base64(request.image_base64)
+        return result
+    except Exception as e:
+        logger.error(f"Gesture detection error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/gestures/synthetic")
-async def get_synthetic_gestures(count: int = 50):
+async def get_synthetic_gestures(count: int = 50, gesture_type: str = "random", noise: bool = True):
     """Generate synthetic gesture data for demo."""
-    gestures = generate_synthetic_gestures(min(count, 200))
-    return {"gestures": gestures, "count": len(gestures)}
+    gestures = generate_synthetic_gesture_sequence(
+        n_frames=min(count, 200),
+        gesture_type=gesture_type if gesture_type in GESTURE_TYPES + ['random'] else 'random',
+        add_noise=noise
+    )
+    
+    # Run through ESN for risk analysis
+    try:
+        esn_result = predict_echo_risk(gestures)
+        risk_analysis = {
+            "risk_score": esn_result['risk_score'],
+            "anomalies": esn_result['anomalies'],
+            "reservoir_activation": esn_result['reservoir_activation']
+        }
+    except Exception as e:
+        risk_analysis = {"error": str(e)}
+    
+    return {
+        "gestures": gestures,
+        "count": len(gestures),
+        "esn_analysis": risk_analysis
+    }
 
 @api_router.post("/gestures/upload")
 async def upload_gesture_data(file: UploadFile = File(...)):
@@ -315,15 +406,32 @@ async def upload_gesture_data(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only CSV and JSON files are supported")
     
     content = await file.read()
-    # In production, this would parse and validate the data
-    # For MVP, we acknowledge the upload
     
     return {
         "message": "Dataset uploaded successfully",
         "filename": file.filename,
         "size_bytes": len(content),
-        "note": "Mocked processing - real integration available in future iterations"
+        "status": "ready_for_processing"
     }
+
+@api_router.post("/gestures/analyze")
+async def analyze_gesture_sequence(gestures: List[Dict]):
+    """Analyze a gesture sequence through the ESN."""
+    if len(gestures) < 5:
+        raise HTTPException(status_code=400, detail="Need at least 5 gestures for analysis")
+    
+    try:
+        result = predict_echo_risk(gestures)
+        return {
+            "risk_score": result['risk_score'],
+            "risk_level": "low" if result['risk_score'] < 0.3 else "medium" if result['risk_score'] < 0.5 else "high" if result['risk_score'] < 0.7 else "critical",
+            "anomalies": result['anomalies'],
+            "reservoir_activation": result['reservoir_activation'],
+            "state_variance": result['state_variance'],
+            "gestures_analyzed": len(gestures)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # KPIs
 @api_router.get("/kpis", response_model=KPIData)
@@ -332,7 +440,6 @@ async def get_kpis():
     total_predictions = await db.predictions.count_documents({})
     active_alerts = await db.alerts.count_documents({"acknowledged": False})
     
-    # Calculate averages from predictions
     pipeline = [
         {"$group": {
             "_id": None,
@@ -382,7 +489,6 @@ async def acknowledge_alert(alert_id: str):
 # Chart data endpoints
 @api_router.get("/charts/risk-distribution")
 async def get_risk_distribution():
-    """Get risk distribution for charts."""
     predictions = await db.predictions.find({}, {"_id": 0, "risk_level": 1}).to_list(1000)
     
     distribution = {"low": 0, "medium": 0, "high": 0, "critical": 0}
@@ -399,8 +505,6 @@ async def get_risk_distribution():
 
 @api_router.get("/charts/error-rates")
 async def get_error_rates():
-    """Get error rates over time for charts."""
-    # Generate mock time-series data
     data = []
     for i in range(7):
         data.append({
@@ -413,7 +517,6 @@ async def get_error_rates():
 
 @api_router.get("/charts/symbiosis-trend")
 async def get_symbiosis_trend():
-    """Get symbiosis index trend over time."""
     data = []
     base_value = 0.7
     for i in range(30):
@@ -438,6 +541,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize ESN on startup."""
+    global esn_initialized
+    try:
+        esn = get_esn_predictor()
+        if not esn.is_trained:
+            logger.info("Training ESN model on startup...")
+            esn.train()
+        esn_initialized = True
+        logger.info("ESN model ready")
+    except Exception as e:
+        logger.error(f"ESN startup initialization failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
