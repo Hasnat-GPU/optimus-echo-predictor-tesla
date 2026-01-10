@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
@@ -9,8 +9,11 @@ import {
   Boxes,
   Radio,
   CheckCircle,
-  XCircle
+  XCircle,
+  Download,
+  FileText
 } from 'lucide-react';
+import { generatePDFReport, exportDashboardToPDF } from '@/utils/pdfExport';
 import { HUDCard, HUDStat } from '@/components/HUDCard';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -50,12 +53,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const dashboardRef = useRef(null);
   const [kpis, setKpis] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [riskData, setRiskData] = useState([]);
   const [errorRates, setErrorRates] = useState([]);
   const [symbiosisTrend, setSymbiosisTrend] = useState([]);
+  const [predictions, setPredictions] = useState([]);
+  const [scenarios, setScenarios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -64,12 +71,14 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [kpisRes, alertsRes, riskRes, errorRes, symbiosisRes] = await Promise.all([
+      const [kpisRes, alertsRes, riskRes, errorRes, symbiosisRes, predictionsRes, scenariosRes] = await Promise.all([
         axios.get(`${API}/kpis`),
         axios.get(`${API}/alerts?acknowledged=false`),
         axios.get(`${API}/charts/risk-distribution`),
         axios.get(`${API}/charts/error-rates`),
-        axios.get(`${API}/charts/symbiosis-trend`)
+        axios.get(`${API}/charts/symbiosis-trend`),
+        axios.get(`${API}/predictions`),
+        axios.get(`${API}/scenarios`)
       ]);
       
       setKpis(kpisRes.data);
@@ -77,11 +86,46 @@ export default function Dashboard() {
       setRiskData(riskRes.data);
       setErrorRates(errorRes.data);
       setSymbiosisTrend(symbiosisRes.data);
+      setPredictions(predictionsRes.data);
+      setScenarios(scenariosRes.data);
     } catch (error) {
       toast.error('Failed to load dashboard data');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      await generatePDFReport({
+        title: 'Optimus Echo Predictor Report',
+        kpis,
+        predictions,
+        scenarios,
+        alerts
+      });
+      toast.success('PDF report generated successfully');
+    } catch (error) {
+      toast.error('Failed to generate PDF report');
+      console.error(error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportDashboard = async () => {
+    if (!dashboardRef.current) return;
+    setExporting(true);
+    try {
+      await exportDashboardToPDF(dashboardRef.current);
+      toast.success('Dashboard exported successfully');
+    } catch (error) {
+      toast.error('Failed to export dashboard');
+      console.error(error);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -117,7 +161,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6" data-testid="dashboard">
+    <div className="space-y-6" data-testid="dashboard" ref={dashboardRef}>
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <HUDCard 
@@ -404,7 +448,56 @@ export default function Dashboard() {
         >
           Refresh Data
         </Button>
+        <Button
+          onClick={handleExportPDF}
+          disabled={exporting}
+          className="btn-secondary flex items-center gap-2"
+          data-testid="export-pdf-btn"
+        >
+          {exporting ? (
+            <div className="spinner w-4 h-4" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          Export Report
+        </Button>
+        <Button
+          onClick={handleExportDashboard}
+          disabled={exporting}
+          className="btn-secondary flex items-center gap-2"
+          data-testid="export-dashboard-btn"
+        >
+          {exporting ? (
+            <div className="spinner w-4 h-4" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Export Dashboard
+        </Button>
       </div>
+
+      {/* ESN Status Banner */}
+      <HUDCard className="mt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-optimus-cyan/10 border border-optimus-cyan/30">
+              <Radio className="h-6 w-6 text-optimus-cyan animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-rajdhani text-lg font-semibold text-optimus-silver uppercase">
+                ReservoirPy Echo State Network
+              </h3>
+              <p className="text-xs text-optimus-steel">
+                Real ESN predictions active • {predictions.length} analyses completed
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-optimus-steel uppercase">Model Status</p>
+            <p className="text-sm text-optimus-green font-mono">OPERATIONAL</p>
+          </div>
+        </div>
+      </HUDCard>
     </div>
   );
 }
