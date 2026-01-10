@@ -4,7 +4,7 @@ Uses ReservoirPy for real echo state network predictions
 """
 import numpy as np
 from reservoirpy.nodes import Reservoir, Ridge
-from reservoirpy import verbosity
+import reservoirpy as rpy
 import logging
 from typing import List, Dict, Tuple, Optional
 import pickle
@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # Suppress ReservoirPy verbose output
-verbosity(0)
+rpy.verbosity(0)
 
 logger = logging.getLogger(__name__)
 
