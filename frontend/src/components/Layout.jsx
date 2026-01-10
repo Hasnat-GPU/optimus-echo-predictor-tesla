@@ -10,7 +10,8 @@ import {
   X,
   Radio,
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  Camera
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Live Detection', href: '/live', icon: Camera, highlight: true },
   { name: 'Scenario Builder', href: '/scenarios', icon: Boxes },
   { name: 'Data Upload', href: '/data', icon: Upload },
   { name: 'Predictions', href: '/predictions', icon: Activity },
