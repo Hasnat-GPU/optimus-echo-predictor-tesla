@@ -9,7 +9,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  Eye
+  Eye,
+  Radio
 } from 'lucide-react';
 import { HUDCard, HUDStat } from '@/components/HUDCard';
 import { Button } from '@/components/ui/button';
@@ -386,12 +387,11 @@ export default function Predictions() {
         </ScrollArea>
       )}
 
-      {/* Demo Note */}
-      <div className="text-center p-4 border border-optimus-warning/30 bg-optimus-warning/5">
-        <p className="text-xs text-optimus-warning">
-          <AlertTriangle className="h-3 w-3 inline mr-1" />
-          MVP Demo: Predictions use mocked echo state network computations. 
-          Real ReservoirPy integration available for production.
+      {/* Real ESN Note */}
+      <div className="text-center p-4 border border-optimus-cyan/30 bg-optimus-cyan/5">
+        <p className="text-xs text-optimus-cyan">
+          <Radio className="h-3 w-3 inline mr-1 animate-pulse" />
+          Real ESN: Predictions powered by ReservoirPy Echo State Networks with trained reservoir computing.
         </p>
       </div>
     </div>
