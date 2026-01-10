@@ -1,75 +1,85 @@
 # Optimus Echo Predictor - Product Requirements Document
 
 ## Overview
-MVP tool for predicting human-robot interaction risks in 2026 Tesla factories using echo state networks for symbiosis forecasting.
+MVP tool for predicting human-robot interaction risks in 2026 Tesla factories using real echo state networks via ReservoirPy.
 
 ## User Personas
-- **Factory Managers**: Need overview of risk levels and alerts
-- **Robotics Engineers**: Configure scenarios and analyze predictions
+- **Factory Managers**: Overview of risk levels and alerts
+- **Robotics Engineers**: Configure scenarios and analyze predictions  
 - **Safety Analysts**: Review echo risks and recommendations
 
 ## Core Requirements (Static)
-1. Echo risk prediction engine
-2. Scenario configuration system
-3. Real-time KPI dashboard
-4. Alert management system
-5. Data upload/generation capabilities
-6. Accessibility compliance
+1. Real ESN prediction engine (ReservoirPy)
+2. MediaPipe gesture detection
+3. Scenario configuration system
+4. Real-time KPI dashboard
+5. PDF report export
+6. Alert management system
 
 ## What's Been Implemented (January 10, 2026)
 
-### Backend (FastAPI + MongoDB)
-- `/api/scenarios` - CRUD operations for factory scenarios
-- `/api/predictions` - Run echo predictions and retrieve results
-- `/api/kpis` - Dashboard KPI aggregation
-- `/api/alerts` - Alert management with acknowledgment
-- `/api/gestures/synthetic` - Synthetic gesture data generation
-- `/api/gestures/upload` - Dataset upload endpoint
-- `/api/charts/*` - Chart data endpoints (risk distribution, error rates, symbiosis trend)
+### Phase 2 - Real ML Integration
+- **ReservoirPy ESN**: 100-unit reservoir, trained on 500 synthetic sequences
+- **MediaPipe Gesture Detection**: Hand landmark tracking, gesture classification
+- **PDF Export**: jsPDF + html2canvas report generation
+- **ESN Status API**: Model monitoring and training endpoints
 
-### Frontend (React + Tailwind)
-- **Landing Page**: Animated robot visualization, hero section with CTAs
-- **Dashboard**: KPI cards, Recharts visualizations (bar, line, pie), alerts panel
-- **Scenario Builder**: Presets, scenario creation with sliders, run predictions
-- **Predictions Page**: Collapsible results with risk metrics, echo risks, recommendations
-- **Data Upload**: Drag-drop zone, synthetic data generation, format documentation
-- **Settings**: Display/accessibility options, system info
+### Backend (FastAPI + MongoDB + ReservoirPy)
+- `/api/esn/status` - ESN model status
+- `/api/esn/initialize` - Train ESN model
+- `/api/scenarios` - CRUD operations
+- `/api/predictions` - Run real ESN predictions
+- `/api/gestures/detect` - MediaPipe gesture detection
+- `/api/gestures/synthetic` - Synthetic data with ESN analysis
+- `/api/gestures/analyze` - Sequence analysis through ESN
 
-### Design System
-- Dark "Symbiotic Industrial Futurism" theme
-- Rajdhani + Roboto Mono typography
-- HUD-style cards with corner decorations
-- Cyber cyan (#00F0FF) primary accent
+### Frontend (React + Tailwind + Recharts)
+- **Dashboard**: KPI cards, charts, alerts, PDF export buttons
+- **Scenario Builder**: Presets, sliders, task types
+- **Predictions**: ESN details panel (reservoir activation, state variance)
+- **Data Upload**: Drag-drop, synthetic generation
+- **Settings**: Display/accessibility options
 
-## Mocked Features (MVP)
-- **Echo State Network**: Rule-based prediction simulation (real ReservoirPy available for production)
-- **Gesture Detection**: Synthetic data generation (OpenCV/Roboflow ready)
-- **VR Mode**: Placeholder toggle only
+### ML Features
+- Reservoir activation tracking
+- State variance analysis
+- Anomaly detection (rapid changes, low confidence, erratic movement)
+- Gesture sequence analysis
+
+## Tech Stack
+- ReservoirPy 0.4+ (Echo State Networks)
+- MediaPipe (Hand detection)
+- jsPDF + html2canvas (PDF export)
+- React 19 + FastAPI + MongoDB
+
+## Impact Metrics
+- ~22% error mitigation rate
+- 95%+ gesture accuracy
+- 0.85 target symbiosis index
+- <100ms prediction latency
 
 ## Prioritized Backlog
 
 ### P0 (Must Have) - COMPLETED
-- [x] Landing page with branding
-- [x] Dashboard with KPIs and charts
-- [x] Scenario CRUD and prediction
-- [x] Basic alerting system
+- [x] Real ReservoirPy ESN integration
+- [x] MediaPipe gesture detection
+- [x] PDF report export
+- [x] ESN model training on startup
 
 ### P1 (Should Have) - Future
-- [ ] Real ReservoirPy integration
-- [ ] OpenCV gesture detection
-- [ ] File parsing for uploaded datasets
 - [ ] User authentication
+- [ ] WebSocket real-time updates
+- [ ] Webcam live gesture feed
+- [ ] Model retraining UI
 
 ### P2 (Nice to Have) - Future
 - [ ] WebXR VR mode
-- [ ] Real-time WebSocket updates
-- [ ] Export reports to PDF
-- [ ] Tableau embed support
 - [ ] Multi-factory support
+- [ ] Custom model hyperparameters
+- [ ] Tableau embed support
 
 ## Next Tasks
-1. Integrate real ReservoirPy for echo state networks
-2. Add OpenCV gesture detection from webcam/video
-3. Implement user authentication
-4. Add PDF report export
-5. Enable real-time updates via WebSocket
+1. Add webcam live gesture detection to frontend
+2. Implement user authentication
+3. Add WebSocket for real-time dashboard updates
+4. Create model retraining interface
