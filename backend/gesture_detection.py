@@ -371,6 +371,7 @@ def generate_synthetic_gesture_sequence(
                 'z': round(np.random.uniform(-0.1, 0.1), 3)
             },
             'frame': i,
+            'timestamp': f"2026-01-10T10:00:{i:02d}Z",
             'source': 'synthetic'
         })
     
