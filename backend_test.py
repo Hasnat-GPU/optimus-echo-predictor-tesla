@@ -268,6 +268,56 @@ class OptimusEchoAPITester:
         else:
             self.log_test("Alerts List", False, "Invalid response format")
 
+    def test_esn_specific_endpoints(self):
+        """Test ESN-specific endpoints mentioned in requirements"""
+        print("\n" + "="*50)
+        print("TESTING ESN SPECIFIC ENDPOINTS")
+        print("="*50)
+        
+        # Test ESN status endpoint
+        success, esn_status = self.run_test("ESN Status", "GET", "esn/status", 200)
+        if success and esn_status:
+            # Check if ESN is initialized
+            if esn_status.get('initialized') == True:
+                self.log_test("ESN Initialized Status", True)
+                print(f"   ESN Units: {esn_status.get('units')}")
+                print(f"   Leak Rate: {esn_status.get('leak_rate')}")
+                print(f"   Spectral Radius: {esn_status.get('spectral_radius')}")
+            else:
+                self.log_test("ESN Initialized Status", False, "ESN not initialized")
+        
+        # Test synthetic gestures with ESN analysis
+        success, gesture_response = self.run_test("Synthetic Gestures with ESN", "GET", "gestures/synthetic?count=5", 200)
+        if success and gesture_response:
+            if 'esn_analysis' in gesture_response:
+                esn_analysis = gesture_response['esn_analysis']
+                if 'risk_score' in esn_analysis and 'reservoir_activation' in esn_analysis:
+                    self.log_test("ESN Analysis in Gestures", True)
+                    print(f"   ESN Risk Score: {esn_analysis.get('risk_score')}")
+                    print(f"   Reservoir Activation: {esn_analysis.get('reservoir_activation')}")
+                else:
+                    self.log_test("ESN Analysis in Gestures", False, "Missing ESN analysis fields")
+            else:
+                self.log_test("ESN Analysis in Gestures", False, "No ESN analysis in response")
+        
+        # Test prediction with ESN details
+        if self.created_prediction_id:
+            success, prediction = self.run_test("Prediction ESN Details", "GET", f"predictions/{self.created_prediction_id}", 200)
+            if success and prediction:
+                if 'esn_details' in prediction and prediction['esn_details']:
+                    esn_details = prediction['esn_details']
+                    required_esn_fields = ['reservoir_activation', 'state_variance', 'gestures_analyzed', 'model_type']
+                    missing_esn_fields = [field for field in required_esn_fields if field not in esn_details]
+                    
+                    if missing_esn_fields:
+                        self.log_test("Prediction ESN Details Structure", False, f"Missing ESN fields: {missing_esn_fields}")
+                    else:
+                        self.log_test("Prediction ESN Details Structure", True)
+                        print(f"   ESN Model Type: {esn_details.get('model_type')}")
+                        print(f"   Gestures Analyzed: {esn_details.get('gestures_analyzed')}")
+                else:
+                    self.log_test("Prediction ESN Details Structure", False, "No ESN details in prediction")
+
     def cleanup_test_data(self):
         """Clean up test data"""
         print("\n" + "="*50)
