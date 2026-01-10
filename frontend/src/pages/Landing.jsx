@@ -92,6 +92,14 @@ export default function Landing() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
               <Button
+                onClick={() => navigate('/live')}
+                className="flex items-center gap-2 bg-optimus-green/10 border border-optimus-green text-optimus-green hover:bg-optimus-green hover:text-optimus-bg transition-colors px-6 py-3 text-xs font-bold tracking-wider uppercase"
+                data-testid="live-detection-btn"
+              >
+                <span>Try Live Detection</span>
+                <Zap className="h-4 w-4" />
+              </Button>
+              <Button
                 onClick={() => navigate('/scenarios')}
                 className="btn-secondary flex items-center gap-2"
                 data-testid="create-scenario-btn"
