@@ -300,7 +300,7 @@ optimus-echo-predictor/
 
 ## 📄 License
 
-MIT License - Copyright (c) 2026 Hasnat
+MIT License - Copyright (c) 2026 Hasnat Qadir
 
 See [LICENSE](LICENSE) for details.
 
