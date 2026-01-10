@@ -4,15 +4,15 @@ Uses ReservoirPy for real echo state network predictions
 """
 import numpy as np
 from reservoirpy.nodes import Reservoir, Ridge
-import reservoirpy as rpy
 import logging
 from typing import List, Dict, Tuple, Optional
 import pickle
 import os
 from pathlib import Path
+import warnings
 
-# Suppress ReservoirPy verbose output
-rpy.verbosity(0)
+# Suppress warnings
+warnings.filterwarnings('ignore')
 
 logger = logging.getLogger(__name__)
 
