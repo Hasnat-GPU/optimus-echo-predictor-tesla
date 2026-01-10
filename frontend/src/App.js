@@ -7,6 +7,7 @@ import Dashboard from "@/pages/Dashboard";
 import ScenarioBuilder from "@/pages/ScenarioBuilder";
 import DataUpload from "@/pages/DataUpload";
 import Predictions from "@/pages/Predictions";
+import LiveDetection from "@/pages/LiveDetection";
 import Settings from "@/pages/Settings";
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/live" element={<LiveDetection />} />
             <Route path="/scenarios" element={<ScenarioBuilder />} />
             <Route path="/data" element={<DataUpload />} />
             <Route path="/predictions" element={<Predictions />} />
