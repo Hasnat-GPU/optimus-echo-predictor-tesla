@@ -1,229 +1,186 @@
-import { Suspense, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
-
-function WireframeRobot() {
-  const groupRef = useRef();
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.3;
-      // Floating animation
-      groupRef.current.position.y = Math.sin(state.clock.getElapsedTime()) * 0.1;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {/* Head */}
-      <mesh position={[0, 2.2, 0]}>
-        <boxGeometry args={[0.8, 0.8, 0.8]} />
-        <meshBasicMaterial color="#00F0FF" wireframe />
-      </mesh>
-      
-      {/* Eyes */}
-      <mesh position={[-0.2, 2.3, 0.4]}>
-        <sphereGeometry args={[0.1, 16, 16]} />
-        <meshBasicMaterial color="#00FF9D" />
-      </mesh>
-      <mesh position={[0.2, 2.3, 0.4]}>
-        <sphereGeometry args={[0.1, 16, 16]} />
-        <meshBasicMaterial color="#00FF9D" />
-      </mesh>
-      
-      {/* Body */}
-      <mesh position={[0, 1, 0]}>
-        <boxGeometry args={[1.2, 1.6, 0.6]} />
-        <meshBasicMaterial color="#00F0FF" wireframe />
-      </mesh>
-      
-      {/* Core glow */}
-      <mesh position={[0, 1.2, 0.31]}>
-        <circleGeometry args={[0.2, 32]} />
-        <meshBasicMaterial color="#00F0FF" />
-      </mesh>
-      
-      {/* Arms */}
-      <mesh position={[-0.9, 1.2, 0]}>
-        <boxGeometry args={[0.5, 0.3, 0.3]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      <mesh position={[-1.3, 0.8, 0]}>
-        <boxGeometry args={[0.3, 0.8, 0.3]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      <mesh position={[0.9, 1.2, 0]}>
-        <boxGeometry args={[0.5, 0.3, 0.3]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      <mesh position={[1.3, 0.8, 0]}>
-        <boxGeometry args={[0.3, 0.8, 0.3]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      
-      {/* Legs */}
-      <mesh position={[-0.35, -0.4, 0]}>
-        <boxGeometry args={[0.4, 1.2, 0.4]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      <mesh position={[0.35, -0.4, 0]}>
-        <boxGeometry args={[0.4, 1.2, 0.4]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      
-      {/* Feet */}
-      <mesh position={[-0.35, -1.1, 0.1]}>
-        <boxGeometry args={[0.5, 0.2, 0.6]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-      <mesh position={[0.35, -1.1, 0.1]}>
-        <boxGeometry args={[0.5, 0.2, 0.6]} />
-        <meshBasicMaterial color="#4A5568" wireframe />
-      </mesh>
-    </group>
-  );
-}
-
-function EchoWaves() {
-  const wave1Ref = useRef();
-  const wave2Ref = useRef();
-  const wave3Ref = useRef();
-
-  useFrame((state) => {
-    const time = state.clock.getElapsedTime();
-    
-    if (wave1Ref.current) {
-      const scale = 1 + Math.sin(time * 2) * 0.3;
-      wave1Ref.current.scale.set(scale, scale, scale);
-      wave1Ref.current.material.opacity = 0.3 - Math.sin(time * 2) * 0.2;
-    }
-    if (wave2Ref.current) {
-      const scale = 1 + Math.sin(time * 2 + 1) * 0.3;
-      wave2Ref.current.scale.set(scale, scale, scale);
-      wave2Ref.current.material.opacity = 0.3 - Math.sin(time * 2 + 1) * 0.2;
-    }
-    if (wave3Ref.current) {
-      const scale = 1 + Math.sin(time * 2 + 2) * 0.3;
-      wave3Ref.current.scale.set(scale, scale, scale);
-      wave3Ref.current.material.opacity = 0.3 - Math.sin(time * 2 + 2) * 0.2;
-    }
-  });
-
-  return (
-    <>
-      <mesh ref={wave1Ref} position={[0, 1, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2, 2.1, 64]} />
-        <meshBasicMaterial color="#00F0FF" transparent opacity={0.3} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh ref={wave2Ref} position={[0, 1, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.5, 2.6, 64]} />
-        <meshBasicMaterial color="#00F0FF" transparent opacity={0.2} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh ref={wave3Ref} position={[0, 1, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[3, 3.1, 64]} />
-        <meshBasicMaterial color="#00F0FF" transparent opacity={0.1} side={THREE.DoubleSide} />
-      </mesh>
-    </>
-  );
-}
-
-function GridFloor() {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.2, 0]}>
-      <planeGeometry args={[20, 20, 20, 20]} />
-      <meshBasicMaterial color="#1F2937" wireframe />
-    </mesh>
-  );
-}
-
-function Scene() {
-  return (
-    <>
-      <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} intensity={0.5} color="#00F0FF" />
-      <pointLight position={[-10, 5, -10]} intensity={0.3} color="#00FF9D" />
-      
-      <WireframeRobot />
-      <EchoWaves />
-      <GridFloor />
-      
-      <OrbitControls
-        enablePan={false}
-        enableZoom={false}
-        minPolarAngle={Math.PI / 4}
-        maxPolarAngle={Math.PI / 2}
-        autoRotate
-        autoRotateSpeed={0.5}
-      />
-    </>
-  );
-}
-
-function ErrorBoundary({ children, fallback }) {
-  const [hasError, setHasError] = useState(false);
-  
-  if (hasError) {
-    return fallback;
-  }
-  
-  return children;
-}
+import { useEffect, useState } from 'react';
 
 export default function RobotPreview({ className }) {
-  const [showCanvas, setShowCanvas] = useState(true);
+  const [time, setTime] = useState(0);
 
-  const fallbackUI = (
-    <div className="w-full h-full flex items-center justify-center bg-optimus-bg relative overflow-hidden">
-      {/* Animated background grid */}
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(t => t + 0.05);
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
+
+  const floatY = Math.sin(time) * 10;
+  const pulse = 0.5 + Math.sin(time * 2) * 0.3;
+
+  return (
+    <div className={`${className} relative overflow-hidden`} data-testid="robot-preview">
+      {/* Background grid */}
       <div className="absolute inset-0 grid-bg opacity-30" />
-      
-      {/* Static wireframe robot representation */}
-      <div className="relative z-10 text-center">
-        <div className="w-32 h-32 mx-auto mb-6 relative">
-          <div className="absolute inset-0 border-2 border-optimus-cyan animate-pulse-glow" />
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-8 h-8 border-2 border-optimus-cyan" />
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 w-12 h-12 border-2 border-optimus-cyan" />
-          <div className="absolute top-6 left-[35%] w-2 h-2 bg-optimus-green rounded-full animate-pulse" />
-          <div className="absolute top-6 right-[35%] w-2 h-2 bg-optimus-green rounded-full animate-pulse" />
-        </div>
-        <p className="text-optimus-cyan font-rajdhani text-lg uppercase tracking-wider">
-          OPTIMUS UNIT
-        </p>
-        <p className="text-optimus-steel text-xs mt-2 font-mono">
-          Echo State Active
-        </p>
-      </div>
       
       {/* Echo waves */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-40 h-40 border border-optimus-cyan/30 rounded-full animate-echo-wave" />
-        <div className="absolute w-40 h-40 border border-optimus-cyan/20 rounded-full animate-echo-wave" style={{ animationDelay: '0.5s' }} />
-        <div className="absolute w-40 h-40 border border-optimus-cyan/10 rounded-full animate-echo-wave" style={{ animationDelay: '1s' }} />
+        <div 
+          className="absolute border border-optimus-cyan/30 rounded-full"
+          style={{
+            width: `${200 + Math.sin(time) * 50}px`,
+            height: `${200 + Math.sin(time) * 50}px`,
+            opacity: 0.3 - Math.sin(time) * 0.2,
+          }}
+        />
+        <div 
+          className="absolute border border-optimus-cyan/20 rounded-full"
+          style={{
+            width: `${280 + Math.sin(time + 1) * 50}px`,
+            height: `${280 + Math.sin(time + 1) * 50}px`,
+            opacity: 0.2 - Math.sin(time + 1) * 0.15,
+          }}
+        />
+        <div 
+          className="absolute border border-optimus-cyan/10 rounded-full"
+          style={{
+            width: `${360 + Math.sin(time + 2) * 50}px`,
+            height: `${360 + Math.sin(time + 2) * 50}px`,
+            opacity: 0.15 - Math.sin(time + 2) * 0.1,
+          }}
+        />
       </div>
-    </div>
-  );
 
-  if (!showCanvas) {
-    return (
-      <div className={className} data-testid="robot-preview">
-        {fallbackUI}
-      </div>
-    );
-  }
-
-  return (
-    <div className={className} data-testid="robot-preview">
-      <Canvas
-        camera={{ position: [4, 3, 5], fov: 50 }}
-        style={{ background: 'transparent' }}
-        onCreated={() => {}}
-        onError={() => setShowCanvas(false)}
+      {/* 3D-like robot using CSS */}
+      <div 
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+        style={{ transform: `translate(-50%, calc(-50% + ${floatY}px))` }}
       >
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
-      </Canvas>
+        <div className="relative" style={{ perspective: '1000px' }}>
+          {/* Robot container */}
+          <div 
+            className="relative"
+            style={{ 
+              transform: `rotateY(${time * 20}deg)`,
+              transformStyle: 'preserve-3d'
+            }}
+          >
+            {/* Head */}
+            <div className="relative mx-auto w-24 h-24 mb-2" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute inset-0 border-2 border-optimus-cyan bg-optimus-card/50 backdrop-blur-sm" 
+                style={{ transform: 'translateZ(12px)' }} />
+              <div className="absolute inset-0 border-2 border-optimus-cyan/50" 
+                style={{ transform: 'translateZ(-12px)' }} />
+              
+              {/* Eyes */}
+              <div 
+                className="absolute top-6 left-5 w-4 h-4 rounded-full"
+                style={{ 
+                  backgroundColor: '#00FF9D',
+                  boxShadow: `0 0 ${10 + pulse * 10}px #00FF9D`,
+                  transform: 'translateZ(14px)'
+                }}
+              />
+              <div 
+                className="absolute top-6 right-5 w-4 h-4 rounded-full"
+                style={{ 
+                  backgroundColor: '#00FF9D',
+                  boxShadow: `0 0 ${10 + pulse * 10}px #00FF9D`,
+                  transform: 'translateZ(14px)'
+                }}
+              />
+              
+              {/* Visor line */}
+              <div 
+                className="absolute top-5 left-3 right-3 h-px bg-optimus-cyan"
+                style={{ transform: 'translateZ(13px)' }}
+              />
+            </div>
+
+            {/* Neck */}
+            <div className="mx-auto w-8 h-4 border-l-2 border-r-2 border-optimus-steel" />
+
+            {/* Body */}
+            <div className="relative mx-auto w-36 h-44" style={{ transformStyle: 'preserve-3d' }}>
+              <div className="absolute inset-0 border-2 border-optimus-cyan bg-optimus-card/50 backdrop-blur-sm"
+                style={{ transform: 'translateZ(10px)' }} />
+              <div className="absolute inset-0 border-2 border-optimus-cyan/50"
+                style={{ transform: 'translateZ(-10px)' }} />
+              
+              {/* Core */}
+              <div 
+                className="absolute top-8 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full border-2 border-optimus-cyan"
+                style={{ 
+                  transform: 'translateZ(12px)',
+                  boxShadow: `0 0 ${15 + pulse * 15}px rgba(0, 240, 255, ${pulse})`,
+                  backgroundColor: `rgba(0, 240, 255, ${pulse * 0.3})`
+                }}
+              />
+              
+              {/* Core inner */}
+              <div 
+                className="absolute top-10 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-optimus-cyan"
+                style={{ 
+                  transform: 'translateZ(14px)',
+                  opacity: pulse
+                }}
+              />
+              
+              {/* Chest panels */}
+              <div className="absolute top-24 left-4 right-4 space-y-2" style={{ transform: 'translateZ(11px)' }}>
+                <div className="h-1 bg-optimus-steel/50" />
+                <div className="h-1 bg-optimus-steel/30" />
+                <div className="h-1 bg-optimus-steel/20" />
+              </div>
+            </div>
+
+            {/* Arms */}
+            <div className="absolute top-32 -left-8 w-6 h-32 border-2 border-optimus-steel bg-optimus-card/30"
+              style={{ 
+                transform: `rotateX(${Math.sin(time) * 10}deg)`,
+                transformOrigin: 'top center'
+              }}
+            >
+              <div className="absolute bottom-0 w-full h-8 border-t-2 border-optimus-cyan/50" />
+            </div>
+            <div className="absolute top-32 -right-8 w-6 h-32 border-2 border-optimus-steel bg-optimus-card/30"
+              style={{ 
+                transform: `rotateX(${Math.sin(time + Math.PI) * 10}deg)`,
+                transformOrigin: 'top center'
+              }}
+            >
+              <div className="absolute bottom-0 w-full h-8 border-t-2 border-optimus-cyan/50" />
+            </div>
+          </div>
+        </div>
+
+        {/* Shadow */}
+        <div 
+          className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-32 h-4 rounded-full bg-optimus-cyan/20 blur-lg"
+          style={{ 
+            transform: `translate(-50%, 0) scale(${1 - floatY / 50})`,
+            opacity: 0.3 + floatY / 50
+          }}
+        />
+      </div>
+
+      {/* HUD Elements */}
+      <div className="absolute top-8 left-8 space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-optimus-green rounded-full animate-pulse" />
+          <span className="text-xs font-mono text-optimus-steel">UNIT STATUS: ONLINE</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-optimus-cyan rounded-full" style={{ opacity: pulse }} />
+          <span className="text-xs font-mono text-optimus-steel">ECHO NETWORK: ACTIVE</span>
+        </div>
+      </div>
+
+      <div className="absolute bottom-8 right-8 text-right">
+        <p className="text-xs font-mono text-optimus-steel">MODEL: OPTIMUS GEN-2</p>
+        <p className="text-xs font-mono text-optimus-cyan">SYMBIOSIS: {(75 + Math.sin(time) * 5).toFixed(1)}%</p>
+      </div>
+
+      {/* Corner decorations */}
+      <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-optimus-cyan/30" />
+      <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-optimus-cyan/30" />
+      <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-optimus-cyan/30" />
+      <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-optimus-cyan/30" />
     </div>
   );
 }
